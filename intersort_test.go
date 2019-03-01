@@ -96,6 +96,105 @@ func TestSingleType(t *testing.T) {
 	}
 }
 
+func TestReverse(t *testing.T) {
+	ptrArray := [2]int{2, 1}
+	chanArray := [2]chan int{make(chan int), make(chan int)}
+
+	tests := []struct {
+		desc   string
+		orig   interface{}
+		sorted interface{}
+	}{
+		{
+			// "When applicable, nil compares low"
+			desc:   "Nil",
+			orig:   []*int{(*int)(nil), &ptrArray[0]},
+			sorted: []*int{&ptrArray[0], nil},
+		},
+		{
+			// "ints, floats, and strings order by <"
+			desc:   "Ints",
+			orig:   []int{2, 3, 1},
+			sorted: []int{3, 2, 1},
+		},
+		{
+			// "ints, floats, and strings order by <"
+			desc:   "Floats",
+			orig:   []float64{1.1, 2.1, 3.1},
+			sorted: []float64{3.1, 2.1, 1.1},
+		},
+		{
+			// "ints, floats, and strings order by <"
+			desc:   "Strings",
+			orig:   []string{"c", "a", "b"},
+			sorted: []string{"c", "b", "a"},
+		},
+		{
+			// "NaN compares less than non-NaN floats"
+			desc:   "NaN",
+			orig:   []float64{math.NaN(), 2.1, 3.1},
+			sorted: []float64{3.1, 2.1, math.NaN()},
+		},
+		{
+			// "bool compares false before true"
+			desc:   "Bool",
+			orig:   []bool{false, true},
+			sorted: []bool{true, false},
+		},
+		{
+			// "Complex compares real, then imaginary"
+			desc:   "Complex",
+			orig:   []complex128{1 + 2i, 2 + 1i},
+			sorted: []complex128{2 + 1i, 1 + 2i},
+		},
+		{
+			// "Pointers compare by machine address"
+			desc:   "Pointers",
+			orig:   []*int{&ptrArray[0], &ptrArray[1]},
+			sorted: []*int{&ptrArray[1], &ptrArray[0]},
+		},
+		{
+			// "Channel values compare by machine address"
+			desc:   "Channel",
+			orig:   []chan int{chanArray[0], chanArray[1]},
+			sorted: []chan int{chanArray[1], chanArray[0]},
+		},
+		{
+			// "Structs compare each field in turn"
+			desc:   "Structs",
+			orig:   []struct{ x, y int }{{0, 1}, {1, 0}},
+			sorted: []struct{ x, y int }{{1, 0}, {0, 1}},
+		},
+		{
+			// "Arrays compare each element in turn"
+			desc:   "Arrays",
+			orig:   [][2]int{{0, 1}, {1, 0}},
+			sorted: [][2]int{{1, 0}, {0, 1}},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.desc, func(t *testing.T) {
+			Reverse(test.orig)
+			// can't use reflect.DeepEqual, since NaN != NaN
+			if fmt.Sprint(test.orig) != fmt.Sprint(test.sorted) {
+				t.Fatalf("expected %#v, got %#v", test.sorted, test.orig)
+			}
+		})
+	}
+}
+
+func TestFailed(t *testing.T) {
+	notslice := "ok"
+	Sort(notslice)
+	if notslice != "ok" {
+		t.Fatalf("expected non-slice value unchanged but got %v", notslice)
+	}
+	Reverse(notslice)
+	if notslice != "ok" {
+		t.Fatalf("expected non-slice value unchanged but got %v", notslice)
+	}
+}
+
 // "Interface values compare first by reflect.Type describing the
 // concrete type and then by concrete value as described in the
 // previous rules."
@@ -119,11 +218,11 @@ func TestMultiType(t *testing.T) {
 
 	var elems Slice
 	for _, g := range groups {
-		elems = append(elems, g...)
+		elems = append(elems, fmt.Sprint(g))
 	}
 	rand.Shuffle(len(elems), elems.Swap) // nice
-
 	sort.Sort(elems)
+
 	str := fmt.Sprint(elems)
 	for _, g := range groups {
 		exp := strings.TrimSpace(fmt.Sprintln(g...))

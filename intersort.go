@@ -1,4 +1,4 @@
-package intersort // import "lukechampine.com/intersort"
+package intersort
 
 import (
 	"fmt"
@@ -28,9 +28,20 @@ func (is Slice) Less(i, j int) bool { return less(is[i], is[j]) }
 func Sort(slice interface{}) {
 	val := reflect.ValueOf(slice)
 	if val.Type().Kind() != reflect.Slice {
-		panic("intersort: cannot sort non-slice type")
+		return
 	}
 	sort.Slice(slice, func(i, j int) bool {
 		return less(val.Index(i).Interface(), val.Index(j).Interface())
+	})
+}
+
+// Reverse sort reversely
+func Reverse(slice interface{}) {
+	val := reflect.ValueOf(slice)
+	if val.Type().Kind() != reflect.Slice {
+		return
+	}
+	sort.Slice(slice, func(i, j int) bool {
+		return less(val.Index(j).Interface(), val.Index(i).Interface())
 	})
 }
